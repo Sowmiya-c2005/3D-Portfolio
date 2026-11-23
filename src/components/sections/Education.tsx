@@ -148,8 +148,8 @@ export default function Education() {
         >
           {/* Main Degree Card: Orbital-Swoop */}
           <RollInCard
-            variant="orbital-swoop"
             index={0}
+            total={2}
             maxTilt={8}
             scale={1.02}
             style={{
@@ -384,8 +384,8 @@ export default function Education() {
 
           {/* Academic Achievements Card: Cascade-Flip */}
           <RollInCard
-            variant="cascade-flip"
             index={1}
+            total={2}
             maxTilt={8}
             scale={1.02}
             style={{

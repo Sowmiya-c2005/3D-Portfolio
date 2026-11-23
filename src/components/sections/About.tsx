@@ -205,8 +205,8 @@ export default function About() {
         >
           {/* Left Column: Personal Narrative & Principles with 3D Orbital Swoop */}
           <RollInCard
-            variant="orbital-swoop"
             index={0}
+            total={3}
             maxTilt={7}
             scale={1.01}
             style={{
@@ -381,8 +381,8 @@ export default function About() {
               {stats.map((stat, idx) => (
                 <RollInCard
                   key={stat.label}
-                  variant="helix-roll"
-                  index={idx + 1}
+                  index={idx}
+                  total={stats.length}
                   maxTilt={10}
                   scale={1.03}
                   style={{
@@ -433,10 +433,10 @@ export default function About() {
               ))}
             </div>
 
-            {/* Engineering Highlights with Cascade-Flip 3D Entrance */}
+            {/* Engineering Highlights with 3D Entrance */}
             <RollInCard
-              variant="cascade-flip"
-              index={5}
+              index={2}
+              total={3}
               maxTilt={7}
               scale={1.01}
               style={{

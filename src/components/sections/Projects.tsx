@@ -578,8 +578,8 @@ export default function Projects() {
                 return (
                   <RollInCard
                     key={proj.id}
-                    variant={idx % 2 === 0 ? "helix-roll" : "cascade-flip"}
-                    index={idx + 1}
+                    index={idx}
+                    total={projects.length}
                     onClick={() => setActiveIndex(idx)}
                     style={{
                       padding: "16px 20px",
@@ -656,8 +656,8 @@ export default function Projects() {
             {projects.map((proj, idx) => (
               <RollInCard
                 key={proj.id}
-                variant={idx % 2 === 0 ? "orbital-swoop" : "cascade-flip"}
                 index={idx}
+                total={projects.length}
                 maxTilt={10}
                 scale={1.02}
                 style={{

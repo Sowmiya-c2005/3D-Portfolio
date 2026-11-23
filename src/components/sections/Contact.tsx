@@ -214,8 +214,8 @@ export default function Contact() {
         >
           {/* Left Column: Direct Communication Channels */}
           <RollInCard
-            variant="orbital-swoop"
             index={0}
+            total={2}
             maxTilt={6}
             scale={1.01}
             style={{
@@ -422,8 +422,8 @@ export default function Contact() {
 
           {/* Right Column: Transmission Form */}
           <RollInCard
-            variant="helix-roll"
             index={1}
+            total={2}
             maxTilt={6}
             scale={1.01}
             style={{

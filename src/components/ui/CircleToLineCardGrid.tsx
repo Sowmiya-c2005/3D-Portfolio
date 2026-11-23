@@ -152,23 +152,23 @@ export default function CircleToLineCardGrid({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !hasTriggered) {
-          hasTriggered = true;
-          // Short delay to ensure DOM dimensions have settled
-          setTimeout(() => {
-            measurePositions();
-            runSequence();
-          }, 120);
-        } else if (!entry.isIntersecting) {
-          // Reset when scrolled far away so user gets fresh swirl when returning
-          if (entry.boundingClientRect.top > window.innerHeight + 200 || entry.boundingClientRect.bottom < -200) {
-            hasTriggered = false;
-            setPhase("orbiting");
-            setSettledIndices(new Set());
+        if (entry.isIntersecting) {
+          if (!hasTriggered) {
+            hasTriggered = true;
+            setTimeout(() => {
+              measurePositions();
+              runSequence();
+            }, 100);
           }
+        } else {
+          // Reset cleanly whenever section leaves viewport so returning always replays 3D circle-to-line swirl!
+          hasTriggered = false;
+          setPhase("orbiting");
+          setSettledIndices(new Set());
+          setSpinAngle(0);
         }
       },
-      { threshold: 0.15, rootMargin: "60px 0px 60px 0px" }
+      { threshold: 0.08, rootMargin: "0px" }
     );
 
     observer.observe(stage);

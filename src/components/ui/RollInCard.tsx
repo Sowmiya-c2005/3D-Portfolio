@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 
-export type RollInVariant = "orbital-swoop" | "helix-roll" | "cascade-flip" | "spiral-drop" | "roll-3d";
+export type RollInVariant = "orbital-swoop" | "helix-roll" | "cascade-flip" | "spiral-drop" | "roll-3d" | "circle-to-line";
 
 interface RollInCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   index?: number;
+  total?: number;
   variant?: RollInVariant;
   delay?: number;
   perspective?: number;
@@ -18,9 +19,10 @@ interface RollInCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function RollInCard({
   children,
   index = 0,
-  variant = "orbital-swoop",
+  total = 4,
+  variant = "circle-to-line",
   delay,
-  perspective = 1000,
+  perspective = 1100,
   maxTilt = 6,
   scale = 1.015,
   glareOpacity = 0.22,
@@ -37,46 +39,44 @@ export default function RollInCard({
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
 
-  // Snappy, silky stagger: maximum delay is 0.25s so cards appear almost immediately without blank lag
-  const calculatedDelay = delay !== undefined ? delay : Math.min(index * 0.045, 0.25);
+  // Staggered sequential flight: each card peels off the 3D circle with a 0.12s gap
+  const calculatedDelay = delay !== undefined ? delay : Math.min(index * 0.12, 0.6);
 
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
 
-    // Check if element is already inside viewport on mount
-    const checkImmediateVisibility = () => {
+    // Check immediate visibility on mount
+    const checkImmediate = () => {
       const rect = el.getBoundingClientRect();
-      const inView = rect.top < window.innerHeight + 60 && rect.bottom > -60;
+      const inView = rect.top < window.innerHeight && rect.bottom > 0;
       if (inView) {
         setIsVisible(true);
-        // Mark settled after entrance animation finishes so hover tilt activates cleanly
-        setTimeout(() => setHasSettled(true), (calculatedDelay + 0.6) * 1000);
+        setTimeout(() => setHasSettled(true), (calculatedDelay + 0.75) * 1000);
       }
     };
 
-    checkImmediateVisibility();
+    checkImmediate();
 
+    // IntersectionObserver with instant reset on exit:
+    // Whenever the user leaves this section, the card resets to its 3D circle position.
+    // When the user scrolls back to the section, it ALWAYS re-spins and swoops into line!
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
-          setTimeout(() => setHasSettled(true), (calculatedDelay + 0.6) * 1000);
+          setTimeout(() => setHasSettled(true), (calculatedDelay + 0.75) * 1000);
         } else {
-          // Generous exit boundary: only reset when user has scrolled well past (180px)
-          // This prevents micro-scroll jitter or cards getting stuck mid-scroll!
-          const r = entry.boundingClientRect;
-          if (r.top > window.innerHeight + 180 || r.bottom < -180) {
-            setIsVisible(false);
-            setHasSettled(false);
-            setIsHovered(false);
-            setTilt({ x: 0, y: 0 });
-          }
+          // Reset cleanly so returning to this section ALWAYS re-runs the 3D circle-to-line swoop!
+          setIsVisible(false);
+          setHasSettled(false);
+          setIsHovered(false);
+          setTilt({ x: 0, y: 0 });
         }
       },
       {
-        threshold: 0.02,
-        rootMargin: "100px 0px 100px 0px",
+        threshold: 0.05,
+        rootMargin: "0px",
       }
     );
 
@@ -84,21 +84,21 @@ export default function RollInCard({
     return () => observer.disconnect();
   }, [calculatedDelay]);
 
-  // Refined 3D entrance trajectories (buttery-smooth, no extreme angles that break bounding boxes)
-  const getInitialTransform = (): string => {
-    switch (variant) {
-      case "orbital-swoop":
-        return `perspective(${perspective}px) rotateY(-18deg) rotateX(14deg) translateY(42px) scale(0.95)`;
-      case "helix-roll":
-        return `perspective(${perspective}px) rotateX(20deg) translateY(42px) scale(0.95)`;
-      case "cascade-flip":
-        return `perspective(${perspective}px) rotateY(18deg) translateY(38px) scale(0.95)`;
-      case "spiral-drop":
-        return `perspective(${perspective}px) rotateX(-16deg) translateY(-36px) scale(0.95)`;
-      case "roll-3d":
-      default:
-        return `perspective(${perspective}px) rotateX(16deg) translateY(40px) scale(0.95)`;
-    }
+  // Compute 3D circular coordinates along the orbital ring for this card
+  const getInitialCircleTransform = (): string => {
+    const count = Math.max(total, 4);
+    // Angular placement on the 3D circle
+    const angle = ((index % count) * (2 * Math.PI)) / count;
+    const radius = 220; // 3D circle radius in px
+
+    const circleX = Math.round(radius * Math.sin(angle));
+    const circleY = Math.round(-radius * Math.cos(angle) * 0.44); // vertical perspective squash
+    const circleZ = Math.round(radius * Math.cos(angle) * 0.85); // depth perspective
+    const rotY = Math.round((angle * 180) / Math.PI);
+    const rotX = 16;
+    const rotZ = Math.round(Math.sin(angle) * 20);
+
+    return `perspective(${perspective}px) translate3d(${circleX}px, ${circleY}px, ${circleZ}px) rotateY(${rotY}deg) rotateX(${rotX}deg) rotateZ(${rotZ}deg) scale(0.88)`;
   };
 
   const handleMouseMove = useCallback(
@@ -130,17 +130,17 @@ export default function RollInCard({
     setGlare((prev) => ({ ...prev, opacity: 0 }));
   }, []);
 
-  // Compute transform:
-  // 1. Not visible yet: hold initial 3D pose
-  // 2. Visible & hovered & settled: apply smooth interactive mouse tilt
-  // 3. Visible & settled or entering: dock at 3D zero
+  // Card 3D transform computation:
+  // 1. Not visible: Holds position on the 3D orbital circle
+  // 2. Visible & hovering: Responsive mouse tilt with specular glare
+  // 3. Visible & settled: Docks in the straight line grid (translate3d 0,0,0)
   const cardTransform = !isVisible
-    ? getInitialTransform()
+    ? getInitialCircleTransform()
     : isHovered && hasSettled
     ? `perspective(${perspective}px) rotateX(${tilt.x.toFixed(2)}deg) rotateY(${tilt.y.toFixed(2)}deg) scale3d(${scale}, ${scale}, ${scale})`
-    : `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1)`;
+    : `perspective(${perspective}px) translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1)`;
 
-  // Strip conflicting transition/transform keys from incoming style prop
+  // Sanitize style prop to prevent clobbering
   const {
     transition: _ignoredTransition,
     transform: _ignoredTransform,
@@ -167,10 +167,10 @@ export default function RollInCard({
           transform: cardTransform,
           opacity: isVisible ? 1 : 0,
           transformStyle: "preserve-3d",
-          // Smooth 0.55s entrance with fast 0.12s tilt response once settled
+          // Smooth 3D swoop flight from circle into line row
           transition: isHovered && hasSettled
             ? "transform 0.12s ease-out, box-shadow 0.2s ease-out"
-            : `transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) ${calculatedDelay}s, opacity 0.45s ease-out ${calculatedDelay}s, border-color 0.4s ease, box-shadow 0.4s ease`,
+            : `transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${calculatedDelay}s, opacity 0.5s ease-out ${calculatedDelay}s, border-color 0.4s ease, box-shadow 0.4s ease`,
           position: "relative",
           overflow: "hidden",
           willChange: "transform, opacity",

@@ -144,8 +144,8 @@ export default function Experience() {
             return (
               <RollInCard
                 key={exp.company}
-                variant={variant}
                 index={idx}
+                total={experience.length}
                 maxTilt={8}
                 scale={1.02}
                 style={{
